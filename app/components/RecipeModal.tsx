@@ -1,8 +1,8 @@
 'use client';
 
-import { Category } from '@/app/types/recipe';
+import { Category, Recipe } from '@/app/types/recipe';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getCategoryColor } from '@/app/lib/categoryColors';
 
 interface RecipeModalProps {
@@ -14,7 +14,9 @@ interface RecipeModalProps {
     url: string;
     categoryIds: number[];
     images?: File[];
+    existingImageUrls?: string[];
   }) => void;
+  editingRecipe?: Recipe | null;
 }
 
 export default function RecipeModal({
@@ -22,12 +24,36 @@ export default function RecipeModal({
   onClose,
   categories,
   onSubmit,
+  editingRecipe,
 }: RecipeModalProps) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+
+  const isEditMode = !!editingRecipe;
+
+  // 編集モード時に初期値をセット
+  useEffect(() => {
+    if (isOpen && editingRecipe) {
+      setTitle(editingRecipe.title);
+      setUrl(editingRecipe.url || '');
+      setSelectedCategories(editingRecipe.categories.map((c) => c.id));
+      setExistingImageUrls(editingRecipe.imageUrls || []);
+      setImagePreviews([]);
+      setImageFiles([]);
+    } else if (isOpen && !editingRecipe) {
+      // 新規登録モード時はリセット
+      setTitle('');
+      setUrl('');
+      setSelectedCategories([]);
+      setExistingImageUrls([]);
+      setImagePreviews([]);
+      setImageFiles([]);
+    }
+  }, [isOpen, editingRecipe]);
 
   if (!isOpen) return null;
 
@@ -48,9 +74,13 @@ export default function RecipeModal({
     }
   };
 
-  const removeImage = (index: number) => {
+  const removeNewImage = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index: number) => {
+    setExistingImageUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -60,6 +90,7 @@ export default function RecipeModal({
       url,
       categoryIds: selectedCategories,
       images: imageFiles.length > 0 ? imageFiles : undefined,
+      existingImageUrls: existingImageUrls.length > 0 ? existingImageUrls : undefined,
     });
     handleClose();
   };
@@ -70,6 +101,7 @@ export default function RecipeModal({
     setSelectedCategories([]);
     setImagePreviews([]);
     setImageFiles([]);
+    setExistingImageUrls([]);
     onClose();
   };
 
@@ -85,7 +117,9 @@ export default function RecipeModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-800">レシピを登録</h2>
+          <h2 className="text-xl font-bold text-gray-800">
+            {isEditMode ? 'レシピを編集' : 'レシピを登録'}
+          </h2>
           <button
             onClick={handleClose}
             className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
@@ -163,14 +197,46 @@ export default function RecipeModal({
               onChange={handleImageChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
             />
+
+            {/* 既存の画像（編集モード時） */}
+            {existingImageUrls.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-600 mb-2">
+                  登録済み画像 ({existingImageUrls.length}枚):
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {existingImageUrls.map((imageUrl, index) => (
+                    <div key={`existing-${index}`} className="relative">
+                      <div className="relative h-32 w-full rounded-lg overflow-hidden border border-gray-200">
+                        <Image
+                          src={imageUrl}
+                          alt={`登録済み画像 ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeExistingImage(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 新しくアップロードする画像のプレビュー */}
             {imagePreviews.length > 0 && (
               <div className="mt-3">
                 <p className="text-xs text-gray-600 mb-2">
-                  プレビュー ({imagePreviews.length}枚):
+                  新しい画像 ({imagePreviews.length}枚):
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative">
+                    <div key={`new-${index}`} className="relative">
                       <div className="relative h-32 w-full rounded-lg overflow-hidden border border-gray-200">
                         <Image
                           src={preview}
@@ -181,7 +247,7 @@ export default function RecipeModal({
                       </div>
                       <button
                         type="button"
-                        onClick={() => removeImage(index)}
+                        onClick={() => removeNewImage(index)}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
                       >
                         ×
@@ -206,7 +272,7 @@ export default function RecipeModal({
               disabled={selectedCategories.length === 0}
               className="flex-1 px-4 py-3 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              登録する
+              {isEditMode ? '更新する' : '登録する'}
             </button>
           </div>
         </form>
