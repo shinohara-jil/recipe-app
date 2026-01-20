@@ -105,9 +105,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, url, imageUrls, categoryIds } = body;
 
-    if (!title || !url || !categoryIds || categoryIds.length === 0) {
+    if (!title || !categoryIds || categoryIds.length === 0) {
       return NextResponse.json(
-        { error: 'Title, URL, and at least one category are required' },
+        { error: 'Title and at least one category are required' },
         { status: 400 }
       );
     }
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     // レシピを挿入
     const [recipe] = await sql`
       INSERT INTO recipes (title, url)
-      VALUES (${title}, ${url})
+      VALUES (${title}, ${url || null})
       RETURNING id, title, url, created_at, updated_at
     `;
 

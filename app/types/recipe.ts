@@ -6,7 +6,7 @@ export interface Category {
 export interface Recipe {
   id: string;
   title: string;
-  url: string;
+  url?: string;
   imageUrls?: string[];
   categories: Category[];
   createdAt: Date;

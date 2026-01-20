@@ -111,13 +111,12 @@ export default function RecipeModal({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              URL <span className="text-red-500">*</span>
+              URL <span className="text-gray-500 text-xs">(任意)</span>
             </label>
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               placeholder="https://example.com/recipe"
             />
