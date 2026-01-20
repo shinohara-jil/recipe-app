@@ -19,49 +19,75 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const categoryId = searchParams.get('categoryId');
 
-    let query = `
-      SELECT
-        r.id,
-        r.title,
-        r.url,
-        r.created_at,
-        r.updated_at,
-        COALESCE(
-          json_agg(
-            DISTINCT jsonb_build_object('id', c.id, 'name', c.name)
-            ORDER BY jsonb_build_object('id', c.id, 'name', c.name)
-          ) FILTER (WHERE c.id IS NOT NULL),
-          '[]'
-        ) as categories,
-        COALESCE(
-          (
-            SELECT json_agg(ri.image_url ORDER BY ri.display_order, ri.id)
-            FROM recipe_images ri
-            WHERE ri.recipe_id = r.id
-          ),
-          '[]'
-        ) as image_urls
-      FROM recipes r
-      LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
-      LEFT JOIN categories c ON rc.category_id = c.id
-    `;
+    let recipes;
 
     if (categoryId) {
-      query += `
+      // カテゴリでフィルタリング
+      const catId = parseInt(categoryId);
+      recipes = await sql`
+        SELECT
+          r.id,
+          r.title,
+          r.url,
+          r.created_at,
+          r.updated_at,
+          COALESCE(
+            json_agg(
+              DISTINCT jsonb_build_object('id', c.id, 'name', c.name)
+              ORDER BY jsonb_build_object('id', c.id, 'name', c.name)
+            ) FILTER (WHERE c.id IS NOT NULL),
+            '[]'
+          ) as categories,
+          COALESCE(
+            (
+              SELECT json_agg(ri.image_url ORDER BY ri.display_order, ri.id)
+              FROM recipe_images ri
+              WHERE ri.recipe_id = r.id
+            ),
+            '[]'
+          ) as image_urls
+        FROM recipes r
+        LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
+        LEFT JOIN categories c ON rc.category_id = c.id
         WHERE r.id IN (
           SELECT recipe_id
           FROM recipe_categories
-          WHERE category_id = ${parseInt(categoryId)}
+          WHERE category_id = ${catId}
         )
+        GROUP BY r.id
+        ORDER BY r.created_at DESC
+      `;
+    } else {
+      // 全件取得
+      recipes = await sql`
+        SELECT
+          r.id,
+          r.title,
+          r.url,
+          r.created_at,
+          r.updated_at,
+          COALESCE(
+            json_agg(
+              DISTINCT jsonb_build_object('id', c.id, 'name', c.name)
+              ORDER BY jsonb_build_object('id', c.id, 'name', c.name)
+            ) FILTER (WHERE c.id IS NOT NULL),
+            '[]'
+          ) as categories,
+          COALESCE(
+            (
+              SELECT json_agg(ri.image_url ORDER BY ri.display_order, ri.id)
+              FROM recipe_images ri
+              WHERE ri.recipe_id = r.id
+            ),
+            '[]'
+          ) as image_urls
+        FROM recipes r
+        LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
+        LEFT JOIN categories c ON rc.category_id = c.id
+        GROUP BY r.id
+        ORDER BY r.created_at DESC
       `;
     }
-
-    query += `
-      GROUP BY r.id
-      ORDER BY r.created_at DESC
-    `;
-
-    const recipes = await sql(query);
 
     return NextResponse.json(recipes);
   } catch (error) {
