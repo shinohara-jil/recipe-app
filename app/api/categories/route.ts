@@ -44,6 +44,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ローカル開発環境でデータベースが設定されていない場合
+    if (!sql) {
+      return NextResponse.json(
+        {
+          error: 'Database not configured. Please set DATABASE_URL in .env.local',
+        },
+        { status: 503 }
+      );
+    }
+
     const [category] = await sql`
       INSERT INTO categories (name)
       VALUES (${name.trim()})
