@@ -1,65 +1,251 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import RecipeCard from './components/RecipeCard';
+import RecipeModal from './components/RecipeModal';
+import CategoryFilter from './components/CategoryFilter';
+import { Recipe, Category } from './types/recipe';
 
 export default function Home() {
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // カテゴリとレシピの初期データ取得
+  useEffect(() => {
+    fetchCategories();
+    fetchRecipes();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
+
+  const fetchRecipes = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/recipes');
+      if (response.ok) {
+        const data = await response.json();
+        const formattedRecipes = data.map((recipe: any) => ({
+          ...recipe,
+          imageUrls: recipe.image_urls || [],
+          createdAt: new Date(recipe.created_at),
+        }));
+        setRecipes(formattedRecipes);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recipes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredRecipes = selectedCategories.length > 0
+    ? recipes.filter((recipe) =>
+        recipe.categories.some((cat) => selectedCategories.includes(cat.id))
+      )
+    : recipes;
+
+  const handleToggleCategory = (categoryId: number) => {
+    setSelectedCategories((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const handleClearFilter = () => {
+    setSelectedCategories([]);
+  };
+
+  const handleRecipeClick = (recipeId: string) => {
+    setExpandedRecipeId(expandedRecipeId === recipeId ? null : recipeId);
+  };
+
+  const handleSubmitRecipe = async (data: {
+    title: string;
+    url: string;
+    categoryIds: number[];
+    images?: File[];
+  }) => {
+    try {
+      // 画像のアップロード
+      const imageUrls: string[] = [];
+      if (data.images && data.images.length > 0) {
+        for (const image of data.images) {
+          const formData = new FormData();
+          formData.append('file', image);
+
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            imageUrls.push(uploadData.url);
+          } else {
+            const errorData = await uploadResponse.json();
+            // ローカル開発環境で設定されていない場合は警告のみ
+            if (uploadResponse.status === 503) {
+              console.warn('画像ストレージが設定されていません:', errorData.error);
+              break; // 1つ失敗したら残りもスキップ
+            } else {
+              alert('画像のアップロードに失敗しました');
+              return;
+            }
+          }
+        }
+      }
+
+      const response = await fetch('/api/recipes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: data.title,
+          url: data.url,
+          imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+          categoryIds: data.categoryIds,
+        }),
+      });
+
+      if (response.ok) {
+        const newRecipe = await response.json();
+        setRecipes([
+          {
+            ...newRecipe,
+            imageUrls: newRecipe.image_urls || [],
+            createdAt: new Date(newRecipe.created_at),
+          },
+          ...recipes,
+        ]);
+      } else {
+        const errorData = await response.json();
+        if (response.status === 503) {
+          alert(
+            'データベースが設定されていません。\n' +
+            'ローカル開発では閲覧のみ可能です。\n' +
+            'レシピを登録するには .env.local に DATABASE_URL を設定してください。'
+          );
+        } else {
+          alert('レシピの登録に失敗しました');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create recipe:', error);
+      alert('レシピの登録に失敗しました');
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
+      <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <header className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-1">
+                🍳 レシピ帳
+              </h1>
+              <p className="text-sm text-gray-600">
+                お気に入りのレシピを保存・管理しましょう
+              </p>
+            </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-6 py-3 bg-orange-500 text-white rounded-full font-semibold shadow-lg hover:bg-orange-600 transition-all hover:shadow-xl active:scale-95"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              ＋ 新規登録
+            </button>
+          </div>
+        </header>
+
+        {categories.length > 0 && (
+          <CategoryFilter
+            categories={categories}
+            selectedCategories={selectedCategories}
+            onToggleCategory={handleToggleCategory}
+            onClearFilter={handleClearFilter}
+          />
+        )}
+
+        <div className="mb-4">
+          <p className="text-sm text-gray-600">
+            全 {filteredRecipes.length} 件のレシピ
+            {selectedCategories.length > 0 && (
+              <span className="ml-1 text-orange-600 font-medium">
+                (絞り込み中)
+              </span>
+            )}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        {isLoading ? (
+          <div className="text-center py-16">
+            <div className="text-4xl mb-4">⏳</div>
+            <p className="text-gray-600">読み込み中...</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+              {filteredRecipes.map((recipe) => (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  onClick={() => handleRecipeClick(recipe.id)}
+                  isExpanded={expandedRecipeId === recipe.id}
+                />
+              ))}
+            </div>
+
+            {filteredRecipes.length === 0 && !isLoading && (
+              <div className="text-center py-16">
+                <div className="text-6xl mb-4">🔍</div>
+                <p className="text-gray-600 text-lg">
+                  {selectedCategories.length > 0
+                    ? '該当するレシピが見つかりませんでした'
+                    : 'レシピがまだ登録されていません'}
+                </p>
+                {selectedCategories.length > 0 ? (
+                  <button
+                    onClick={handleClearFilter}
+                    className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    フィルターをクリア
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="mt-4 px-6 py-3 bg-orange-500 text-white rounded-full font-semibold hover:bg-orange-600"
+                  >
+                    最初のレシピを登録
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <RecipeModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        categories={categories}
+        onSubmit={handleSubmitRecipe}
+      />
     </div>
   );
 }
