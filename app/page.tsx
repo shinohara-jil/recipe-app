@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import RecipeCard from './components/RecipeCard';
 import RecipeModal from './components/RecipeModal';
 import CategoryFilter from './components/CategoryFilter';
+import CategoryEditModal from './components/CategoryEditModal';
 import { Recipe, Category } from './types/recipe';
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
@@ -83,6 +85,47 @@ export default function Home() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingRecipe(null);
+  };
+
+  const handleUpdateCategory = async (categoryId: number, newName: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (response.ok) {
+        const updatedCategory = await response.json();
+        // カテゴリ一覧を更新
+        setCategories(categories.map((c) =>
+          c.id === categoryId ? { ...c, name: updatedCategory.name } : c
+        ));
+        // レシピ内のカテゴリも更新
+        setRecipes(recipes.map((recipe) => ({
+          ...recipe,
+          categories: recipe.categories.map((c) =>
+            c.id === categoryId ? { ...c, name: updatedCategory.name } : c
+          ),
+        })));
+        return true;
+      } else {
+        if (response.status === 503) {
+          alert(
+            'データベースが設定されていません。\n' +
+            'ローカル開発では閲覧のみ可能です。'
+          );
+        } else if (response.status === 409) {
+          alert('同じ名前のカテゴリが既に存在します。');
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to update category:', error);
+      return false;
+    }
   };
 
   const handleSubmitRecipe = async (data: {
@@ -218,12 +261,40 @@ export default function Home() {
             <h1 className="text-3xl font-bold text-gray-800">
               🍳 レシピ帳
             </h1>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-full font-semibold shadow-lg hover:bg-orange-600 transition-all hover:shadow-xl active:scale-95 text-sm sm:text-base whitespace-nowrap"
-            >
-              ＋ 新規登録
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsCategoryEditModalOpen(true)}
+                className="px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-all active:scale-95 text-sm sm:text-base whitespace-nowrap flex items-center gap-1.5"
+                title="カテゴリ編集"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 6h.008v.008H6V6Z"
+                  />
+                </svg>
+                <span className="hidden sm:inline">カテゴリ</span>
+              </button>
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-full font-semibold shadow-lg hover:bg-orange-600 transition-all hover:shadow-xl active:scale-95 text-sm sm:text-base whitespace-nowrap"
+              >
+                ＋ 新規登録
+              </button>
+            </div>
           </div>
         </header>
 
@@ -301,6 +372,13 @@ export default function Home() {
         categories={categories}
         onSubmit={handleSubmitRecipe}
         editingRecipe={editingRecipe}
+      />
+
+      <CategoryEditModal
+        isOpen={isCategoryEditModalOpen}
+        onClose={() => setIsCategoryEditModalOpen(false)}
+        categories={categories}
+        onUpdate={handleUpdateCategory}
       />
     </div>
   );
