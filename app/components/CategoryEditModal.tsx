@@ -9,6 +9,7 @@ interface CategoryEditModalProps {
   onClose: () => void;
   categories: Category[];
   onUpdate: (categoryId: number, newName: string) => Promise<boolean>;
+  onAdd: (name: string) => Promise<boolean>;
 }
 
 export default function CategoryEditModal({
@@ -16,16 +17,20 @@ export default function CategoryEditModal({
   onClose,
   categories,
   onUpdate,
+  onAdd,
 }: CategoryEditModalProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
       setEditingId(null);
       setEditingName('');
+      setNewCategoryName('');
       setError(null);
     }
   }, [isOpen]);
@@ -68,11 +73,34 @@ export default function CategoryEditModal({
     }
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+
+    setIsAdding(true);
+    setError(null);
+
+    const success = await onAdd(newCategoryName.trim());
+
+    setIsAdding(false);
+
+    if (success) {
+      setNewCategoryName('');
+    } else {
+      setError('追加に失敗しました');
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSaveEdit();
     } else if (e.key === 'Escape') {
       handleCancelEdit();
+    }
+  };
+
+  const handleAddKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleAddCategory();
     }
   };
 
@@ -98,6 +126,32 @@ export default function CategoryEditModal({
             </div>
           )}
 
+          {/* 新規追加フォーム */}
+          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              新しいカテゴリを追加
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={handleAddKeyDown}
+                placeholder="カテゴリ名を入力"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                disabled={isAdding}
+              />
+              <button
+                onClick={handleAddCategory}
+                disabled={isAdding || !newCategoryName.trim()}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {isAdding ? '...' : '追加'}
+              </button>
+            </div>
+          </div>
+
+          {/* 既存カテゴリ一覧 */}
           <div className="space-y-3">
             {categories.map((category) => (
               <div

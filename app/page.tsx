@@ -128,6 +128,37 @@ export default function Home() {
     }
   };
 
+  const handleAddCategory = async (name: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      if (response.ok) {
+        const newCategory = await response.json();
+        setCategories([...categories, { id: newCategory.id, name: newCategory.name }]);
+        return true;
+      } else {
+        if (response.status === 503) {
+          alert(
+            'データベースが設定されていません。\n' +
+            'ローカル開発では閲覧のみ可能です。'
+          );
+        } else if (response.status === 409) {
+          alert('同じ名前のカテゴリが既に存在します。');
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to add category:', error);
+      return false;
+    }
+  };
+
   const handleSubmitRecipe = async (data: {
     title: string;
     url: string;
@@ -379,6 +410,7 @@ export default function Home() {
         onClose={() => setIsCategoryEditModalOpen(false)}
         categories={categories}
         onUpdate={handleUpdateCategory}
+        onAdd={handleAddCategory}
       />
     </div>
   );
