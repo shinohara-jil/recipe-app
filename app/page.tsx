@@ -13,6 +13,7 @@ export default function Home() {
   const [expandedRecipeId, setExpandedRecipeId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
@@ -74,15 +75,26 @@ export default function Home() {
     setExpandedRecipeId(expandedRecipeId === recipeId ? null : recipeId);
   };
 
+  const handleEditRecipe = (recipe: Recipe) => {
+    setEditingRecipe(recipe);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingRecipe(null);
+  };
+
   const handleSubmitRecipe = async (data: {
     title: string;
     url: string;
     categoryIds: number[];
     images?: File[];
+    existingImageUrls?: string[];
   }) => {
     try {
-      // 画像のアップロード
-      const imageUrls: string[] = [];
+      // 新しい画像のアップロード
+      const newImageUrls: string[] = [];
       if (data.images && data.images.length > 0) {
         for (const image of data.images) {
           const formData = new FormData();
@@ -95,7 +107,7 @@ export default function Home() {
 
           if (uploadResponse.ok) {
             const uploadData = await uploadResponse.json();
-            imageUrls.push(uploadData.url);
+            newImageUrls.push(uploadData.url);
           } else {
             const errorData = await uploadResponse.json();
             // ローカル開発環境で設定されていない場合は警告のみ
@@ -110,44 +122,91 @@ export default function Home() {
         }
       }
 
-      const response = await fetch('/api/recipes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: data.title,
-          url: data.url,
-          imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
-          categoryIds: data.categoryIds,
-        }),
-      });
+      // 既存の画像と新しい画像を結合
+      const allImageUrls = [
+        ...(data.existingImageUrls || []),
+        ...newImageUrls,
+      ];
 
-      if (response.ok) {
-        const newRecipe = await response.json();
-        setRecipes([
-          {
-            ...newRecipe,
-            imageUrls: newRecipe.image_urls || [],
-            createdAt: new Date(newRecipe.created_at),
+      if (editingRecipe) {
+        // 編集モード
+        const response = await fetch(`/api/recipes/${editingRecipe.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          ...recipes,
-        ]);
-      } else {
-        const errorData = await response.json();
-        if (response.status === 503) {
-          alert(
-            'データベースが設定されていません。\n' +
-            'ローカル開発では閲覧のみ可能です。\n' +
-            'レシピを登録するには .env.local に DATABASE_URL を設定してください。'
-          );
+          body: JSON.stringify({
+            title: data.title,
+            url: data.url,
+            imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
+            categoryIds: data.categoryIds,
+          }),
+        });
+
+        if (response.ok) {
+          const updatedRecipe = await response.json();
+          setRecipes(recipes.map((r) =>
+            r.id === editingRecipe.id
+              ? {
+                  ...updatedRecipe,
+                  imageUrls: updatedRecipe.image_urls || [],
+                  createdAt: new Date(updatedRecipe.created_at),
+                }
+              : r
+          ));
         } else {
-          alert('レシピの登録に失敗しました');
+          const errorData = await response.json();
+          if (response.status === 503) {
+            alert(
+              'データベースが設定されていません。\n' +
+              'ローカル開発では閲覧のみ可能です。\n' +
+              'レシピを編集するには .env.local に DATABASE_URL を設定してください。'
+            );
+          } else {
+            alert('レシピの更新に失敗しました');
+          }
+        }
+      } else {
+        // 新規登録モード
+        const response = await fetch('/api/recipes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title: data.title,
+            url: data.url,
+            imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
+            categoryIds: data.categoryIds,
+          }),
+        });
+
+        if (response.ok) {
+          const newRecipe = await response.json();
+          setRecipes([
+            {
+              ...newRecipe,
+              imageUrls: newRecipe.image_urls || [],
+              createdAt: new Date(newRecipe.created_at),
+            },
+            ...recipes,
+          ]);
+        } else {
+          const errorData = await response.json();
+          if (response.status === 503) {
+            alert(
+              'データベースが設定されていません。\n' +
+              'ローカル開発では閲覧のみ可能です。\n' +
+              'レシピを登録するには .env.local に DATABASE_URL を設定してください。'
+            );
+          } else {
+            alert('レシピの登録に失敗しました');
+          }
         }
       }
     } catch (error) {
-      console.error('Failed to create recipe:', error);
-      alert('レシピの登録に失敗しました');
+      console.error('Failed to save recipe:', error);
+      alert(editingRecipe ? 'レシピの更新に失敗しました' : 'レシピの登録に失敗しました');
     }
   };
 
@@ -202,6 +261,7 @@ export default function Home() {
                   recipe={recipe}
                   onClick={() => handleRecipeClick(recipe.id)}
                   isExpanded={expandedRecipeId === recipe.id}
+                  onEdit={() => handleEditRecipe(recipe)}
                 />
               ))}
             </div>
@@ -237,9 +297,10 @@ export default function Home() {
 
       <RecipeModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         categories={categories}
         onSubmit={handleSubmitRecipe}
+        editingRecipe={editingRecipe}
       />
     </div>
   );
