@@ -155,18 +155,13 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
       <div className="container mx-auto px-4 py-6 max-w-7xl">
         <header className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-1">
-                🍳 レシピ帳
-              </h1>
-              <p className="text-sm text-gray-600">
-                お気に入りのレシピを保存・管理しましょう
-              </p>
-            </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <h1 className="text-3xl font-bold text-gray-800">
+              🍳 レシピ帳
+            </h1>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-6 py-3 bg-orange-500 text-white rounded-full font-semibold shadow-lg hover:bg-orange-600 transition-all hover:shadow-xl active:scale-95"
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-full font-semibold shadow-lg hover:bg-orange-600 transition-all hover:shadow-xl active:scale-95 text-sm sm:text-base whitespace-nowrap"
             >
               ＋ 新規登録
             </button>
