@@ -42,16 +42,16 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit }: Reci
   return (
     <>
       <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-lg">
-      <div onClick={onClick} className="cursor-pointer p-5">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">
+      <div onClick={onClick} className="cursor-pointer p-3">
+        <h3 className="text-base font-semibold text-gray-800 mb-2">
           {recipe.title}
         </h3>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {recipe.categories.map((category) => (
             <span
               key={category.id}
-              className={`px-3 py-1 text-xs font-medium rounded-full ${getCategoryColor(category.id)}`}
+              className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryColor(category.id)}`}
             >
               {category.name}
             </span>
@@ -61,18 +61,18 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit }: Reci
 
       {isExpanded && (
         <div
-          className="border-t border-gray-200 p-4 bg-gray-50 animate-fade-in"
+          className="border-t border-gray-200 p-3 bg-gray-50 animate-fade-in"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="space-y-3">
+          <div className="space-y-2">
             {recipe.url && (
               <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-1">レシピURL</h4>
+                <h4 className="text-xs font-semibold text-gray-700 mb-0.5">レシピURL</h4>
                 <a
                   href={recipe.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
+                  className="text-xs text-blue-600 hover:text-blue-800 underline break-all"
                 >
                   {recipe.url}
                 </a>
@@ -81,12 +81,12 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit }: Reci
 
             {recipe.imageUrls && recipe.imageUrls.length > 0 && (
               <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                <h4 className="text-xs font-semibold text-gray-700 mb-1.5">
                   画像 ({recipe.imageUrls.length}枚)
                 </h4>
                 <div className="relative">
                   <div
-                    className="relative h-64 w-full rounded-lg overflow-hidden cursor-pointer"
+                    className="relative h-48 w-full rounded-lg overflow-hidden cursor-pointer"
                     onClick={() => openImageModal(currentImageIndex)}
                   >
                     <Image
