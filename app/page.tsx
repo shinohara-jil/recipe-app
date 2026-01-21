@@ -16,7 +16,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
-  const [sortByProvider, setSortByProvider] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
@@ -57,30 +57,22 @@ export default function Home() {
   };
 
   const filteredRecipes = (() => {
-    let filtered = selectedCategories.length > 0
-      ? recipes.filter((recipe) =>
-          recipe.categories.some((cat) => selectedCategories.includes(cat.id))
-        )
-      : recipes;
+    let filtered = recipes;
 
-    // レシピ提供者でソート
-    if (sortByProvider) {
-      filtered = [...filtered].sort((a, b) => {
-        const getProviderOrder = (provider: string | undefined) => {
-          if (provider === '長谷川あかり') return 0;
-          if (provider === 'もも') return 1;
-          return 2; // その他
-        };
+    // カテゴリでフィルタリング
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter((recipe) =>
+        recipe.categories.some((cat) => selectedCategories.includes(cat.id))
+      );
+    }
 
-        const orderA = getProviderOrder(a.provider);
-        const orderB = getProviderOrder(b.provider);
-
-        if (orderA !== orderB) {
-          return orderA - orderB;
+    // レシピ提供者でフィルタリング
+    if (selectedProvider) {
+      filtered = filtered.filter((recipe) => {
+        if (selectedProvider === 'その他') {
+          return !recipe.provider || (recipe.provider !== '長谷川あかり' && recipe.provider !== 'もも');
         }
-
-        // 同じグループ内では作成日時順
-        return b.createdAt.getTime() - a.createdAt.getTime();
+        return recipe.provider === selectedProvider;
       });
     }
 
@@ -367,25 +359,58 @@ export default function Home() {
           />
         )}
 
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            全 {filteredRecipes.length} 件のレシピ
-            {selectedCategories.length > 0 && (
-              <span className="ml-1 text-orange-600 font-medium">
-                (絞り込み中)
-              </span>
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">
+              全 {filteredRecipes.length} 件のレシピ
+              {(selectedCategories.length > 0 || selectedProvider) && (
+                <span className="ml-1 text-orange-600 font-medium">
+                  (絞り込み中)
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-600 font-medium">提供者:</span>
+            <button
+              onClick={() => setSelectedProvider(selectedProvider === '長谷川あかり' ? null : '長谷川あかり')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                selectedProvider === '長谷川あかり'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              長谷川あかり
+            </button>
+            <button
+              onClick={() => setSelectedProvider(selectedProvider === 'もも' ? null : 'もも')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                selectedProvider === 'もも'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              もも
+            </button>
+            <button
+              onClick={() => setSelectedProvider(selectedProvider === 'その他' ? null : 'その他')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                selectedProvider === 'その他'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              その他
+            </button>
+            {selectedProvider && (
+              <button
+                onClick={() => setSelectedProvider(null)}
+                className="px-2 py-1.5 text-xs text-gray-600 hover:text-gray-800 underline"
+              >
+                クリア
+              </button>
             )}
-          </p>
-          <button
-            onClick={() => setSortByProvider(!sortByProvider)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              sortByProvider
-                ? 'bg-orange-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            {sortByProvider ? '提供者順 ✓' : '提供者順'}
-          </button>
+          </div>
         </div>
 
         {isLoading ? (
