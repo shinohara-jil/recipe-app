@@ -12,6 +12,7 @@ interface RecipeModalProps {
   onSubmit: (data: {
     title: string;
     url: string;
+    provider: string;
     categoryIds: number[];
     images?: File[];
     existingImageUrls?: string[];
@@ -28,6 +29,7 @@ export default function RecipeModal({
 }: RecipeModalProps) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
+  const [provider, setProvider] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -40,6 +42,7 @@ export default function RecipeModal({
     if (isOpen && editingRecipe) {
       setTitle(editingRecipe.title);
       setUrl(editingRecipe.url || '');
+      setProvider(editingRecipe.provider || '');
       setSelectedCategories(editingRecipe.categories.map((c) => c.id));
       setExistingImageUrls(editingRecipe.imageUrls || []);
       setImagePreviews([]);
@@ -48,6 +51,7 @@ export default function RecipeModal({
       // 新規登録モード時はリセット
       setTitle('');
       setUrl('');
+      setProvider('');
       setSelectedCategories([]);
       setExistingImageUrls([]);
       setImagePreviews([]);
@@ -88,6 +92,7 @@ export default function RecipeModal({
     onSubmit({
       title,
       url,
+      provider,
       categoryIds: selectedCategories,
       images: imageFiles.length > 0 ? imageFiles : undefined,
       existingImageUrls: existingImageUrls.length > 0 ? existingImageUrls : undefined,
@@ -98,6 +103,7 @@ export default function RecipeModal({
   const handleClose = () => {
     setTitle('');
     setUrl('');
+    setProvider('');
     setSelectedCategories([]);
     setImagePreviews([]);
     setImageFiles([]);
@@ -153,6 +159,43 @@ export default function RecipeModal({
               onChange={(e) => setUrl(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               placeholder="https://example.com/recipe"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              レシピ提供者 <span className="text-gray-500 text-xs">(任意)</span>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setProvider('長谷川あかり')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  provider === '長谷川あかり'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                長谷川あかり
+              </button>
+              <button
+                type="button"
+                onClick={() => setProvider('もも')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  provider === 'もも'
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                もも
+              </button>
+            </div>
+            <input
+              type="text"
+              value={provider !== '長谷川あかり' && provider !== 'もも' ? provider : ''}
+              onChange={(e) => setProvider(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent mt-2"
+              placeholder="またはカスタム入力"
             />
           </div>
 

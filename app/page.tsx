@@ -16,6 +16,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
+  const [sortByProvider, setSortByProvider] = useState(false);
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
@@ -55,11 +56,36 @@ export default function Home() {
     }
   };
 
-  const filteredRecipes = selectedCategories.length > 0
-    ? recipes.filter((recipe) =>
-        recipe.categories.some((cat) => selectedCategories.includes(cat.id))
-      )
-    : recipes;
+  const filteredRecipes = (() => {
+    let filtered = selectedCategories.length > 0
+      ? recipes.filter((recipe) =>
+          recipe.categories.some((cat) => selectedCategories.includes(cat.id))
+        )
+      : recipes;
+
+    // レシピ提供者でソート
+    if (sortByProvider) {
+      filtered = [...filtered].sort((a, b) => {
+        const getProviderOrder = (provider: string | undefined) => {
+          if (provider === '長谷川あかり') return 0;
+          if (provider === 'もも') return 1;
+          return 2; // その他
+        };
+
+        const orderA = getProviderOrder(a.provider);
+        const orderB = getProviderOrder(b.provider);
+
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+
+        // 同じグループ内では作成日時順
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+    }
+
+    return filtered;
+  })();
 
   const handleToggleCategory = (categoryId: number) => {
     setSelectedCategories((prev) =>
@@ -162,6 +188,7 @@ export default function Home() {
   const handleSubmitRecipe = async (data: {
     title: string;
     url: string;
+    provider: string;
     categoryIds: number[];
     images?: File[];
     existingImageUrls?: string[];
@@ -212,6 +239,7 @@ export default function Home() {
           body: JSON.stringify({
             title: data.title,
             url: data.url,
+            provider: data.provider,
             imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
             categoryIds: data.categoryIds,
           }),
@@ -250,6 +278,7 @@ export default function Home() {
           body: JSON.stringify({
             title: data.title,
             url: data.url,
+            provider: data.provider,
             imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
             categoryIds: data.categoryIds,
           }),
@@ -338,7 +367,7 @@ export default function Home() {
           />
         )}
 
-        <div className="mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <p className="text-sm text-gray-600">
             全 {filteredRecipes.length} 件のレシピ
             {selectedCategories.length > 0 && (
@@ -347,6 +376,16 @@ export default function Home() {
               </span>
             )}
           </p>
+          <button
+            onClick={() => setSortByProvider(!sortByProvider)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              sortByProvider
+                ? 'bg-orange-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {sortByProvider ? '提供者順 ✓' : '提供者順'}
+          </button>
         </div>
 
         {isLoading ? (

@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
           r.id,
           r.title,
           r.url,
+          r.provider,
           r.created_at,
           r.updated_at,
           COALESCE(
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
           r.id,
           r.title,
           r.url,
+          r.provider,
           r.created_at,
           r.updated_at,
           COALESCE(
@@ -103,7 +105,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, url, imageUrls, categoryIds } = body;
+    const { title, url, provider, imageUrls, categoryIds } = body;
 
     if (!title || !categoryIds || categoryIds.length === 0) {
       return NextResponse.json(
@@ -124,9 +126,9 @@ export async function POST(request: NextRequest) {
 
     // レシピを挿入
     const [recipe] = await sql`
-      INSERT INTO recipes (title, url)
-      VALUES (${title}, ${url || null})
-      RETURNING id, title, url, created_at, updated_at
+      INSERT INTO recipes (title, url, provider)
+      VALUES (${title}, ${url || null}, ${provider || null})
+      RETURNING id, title, url, provider, created_at, updated_at
     `;
 
     // 画像を挿入

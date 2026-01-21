@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, url, imageUrls, categoryIds } = body;
+    const { title, url, provider, imageUrls, categoryIds } = body;
 
     if (!title || !categoryIds || categoryIds.length === 0) {
       return NextResponse.json(
@@ -42,9 +42,9 @@ export async function PUT(
     // レシピを更新
     const [recipe] = await sql`
       UPDATE recipes
-      SET title = ${title}, url = ${url || null}, updated_at = NOW()
+      SET title = ${title}, url = ${url || null}, provider = ${provider || null}, updated_at = NOW()
       WHERE id = ${id}
-      RETURNING id, title, url, created_at, updated_at
+      RETURNING id, title, url, provider, created_at, updated_at
     `;
 
     // 既存のカテゴリ関連を削除
