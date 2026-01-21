@@ -307,16 +307,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        <header className="mb-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-            <h1 className="text-3xl font-bold text-gray-800">
+      <div className="container mx-auto px-2 py-3 max-w-7xl">
+        <header className="mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+            <h1 className="text-2xl font-bold text-gray-800">
               🍳 レシピ帳
             </h1>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsCategoryEditModalOpen(true)}
-                className="px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-all active:scale-95 text-sm sm:text-base whitespace-nowrap flex items-center gap-1.5"
+                className="px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap flex items-center gap-1"
                 title="カテゴリ編集"
               >
                 <svg
@@ -325,7 +325,7 @@ export default function Home() {
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
                   stroke="currentColor"
-                  className="w-4 h-4"
+                  className="w-3.5 h-3.5"
                 >
                   <path
                     strokeLinecap="round"
@@ -342,7 +342,7 @@ export default function Home() {
               </button>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2 sm:px-6 sm:py-3 bg-orange-500 text-white rounded-full font-semibold shadow-lg hover:bg-orange-600 transition-all hover:shadow-xl active:scale-95 text-sm sm:text-base whitespace-nowrap"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-orange-500 text-white rounded-full font-semibold shadow-lg hover:bg-orange-600 transition-all hover:shadow-xl active:scale-95 text-xs sm:text-sm whitespace-nowrap"
               >
                 ＋ 新規登録
               </button>
@@ -359,9 +359,9 @@ export default function Home() {
           />
         )}
 
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs text-gray-600">
               全 {filteredRecipes.length} 件のレシピ
               {(selectedCategories.length > 0 || selectedProvider) && (
                 <span className="ml-1 text-orange-600 font-medium">
@@ -370,11 +370,11 @@ export default function Home() {
               )}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-gray-600 font-medium">提供者:</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs text-gray-600 font-medium">提供者:</span>
             <button
               onClick={() => setSelectedProvider(selectedProvider === '長谷川あかり' ? null : '長谷川あかり')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+              className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
                 selectedProvider === '長谷川あかり'
                   ? 'bg-orange-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -384,7 +384,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setSelectedProvider(selectedProvider === 'もも' ? null : 'もも')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+              className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
                 selectedProvider === 'もも'
                   ? 'bg-orange-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -394,7 +394,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setSelectedProvider(selectedProvider === 'その他' ? null : 'その他')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+              className={`px-2 py-1 text-xs font-medium rounded-full transition-colors ${
                 selectedProvider === 'その他'
                   ? 'bg-orange-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -405,7 +405,7 @@ export default function Home() {
             {selectedProvider && (
               <button
                 onClick={() => setSelectedProvider(null)}
-                className="px-2 py-1.5 text-xs text-gray-600 hover:text-gray-800 underline"
+                className="px-1.5 py-1 text-xs text-gray-600 hover:text-gray-800 underline"
               >
                 クリア
               </button>
@@ -420,7 +420,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
               {filteredRecipes.map((recipe) => (
                 <RecipeCard
                   key={recipe.id}

@@ -17,9 +17,9 @@ export default function CategoryFilter({
   onClearFilter,
 }: CategoryFilterProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-700">カテゴリで絞り込み</h3>
+    <div className="bg-white rounded-lg shadow-md p-3 mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-semibold text-gray-700">カテゴリで絞り込み</h3>
         {selectedCategories.length > 0 && (
           <button
             onClick={onClearFilter}
@@ -30,14 +30,14 @@ export default function CategoryFilter({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {categories.map((category) => {
           const isSelected = selectedCategories.includes(category.id);
           return (
             <button
               key={category.id}
               onClick={() => onToggleCategory(category.id)}
-              className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                 isSelected
                   ? getCategoryColor(category.id)
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
