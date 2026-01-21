@@ -16,6 +16,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
@@ -55,11 +56,28 @@ export default function Home() {
     }
   };
 
-  const filteredRecipes = selectedCategories.length > 0
-    ? recipes.filter((recipe) =>
+  const filteredRecipes = (() => {
+    let filtered = recipes;
+
+    // カテゴリでフィルタリング
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter((recipe) =>
         recipe.categories.some((cat) => selectedCategories.includes(cat.id))
-      )
-    : recipes;
+      );
+    }
+
+    // レシピ提供者でフィルタリング
+    if (selectedProvider) {
+      filtered = filtered.filter((recipe) => {
+        if (selectedProvider === 'その他') {
+          return !recipe.provider || (recipe.provider !== '長谷川あかり' && recipe.provider !== 'もも');
+        }
+        return recipe.provider === selectedProvider;
+      });
+    }
+
+    return filtered;
+  })();
 
   const handleToggleCategory = (categoryId: number) => {
     setSelectedCategories((prev) =>
@@ -162,6 +180,7 @@ export default function Home() {
   const handleSubmitRecipe = async (data: {
     title: string;
     url: string;
+    provider: string;
     categoryIds: number[];
     images?: File[];
     existingImageUrls?: string[];
@@ -212,6 +231,7 @@ export default function Home() {
           body: JSON.stringify({
             title: data.title,
             url: data.url,
+            provider: data.provider,
             imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
             categoryIds: data.categoryIds,
           }),
@@ -250,6 +270,7 @@ export default function Home() {
           body: JSON.stringify({
             title: data.title,
             url: data.url,
+            provider: data.provider,
             imageUrls: allImageUrls.length > 0 ? allImageUrls : undefined,
             categoryIds: data.categoryIds,
           }),
@@ -339,14 +360,57 @@ export default function Home() {
         )}
 
         <div className="mb-4">
-          <p className="text-sm text-gray-600">
-            全 {filteredRecipes.length} 件のレシピ
-            {selectedCategories.length > 0 && (
-              <span className="ml-1 text-orange-600 font-medium">
-                (絞り込み中)
-              </span>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-600">
+              全 {filteredRecipes.length} 件のレシピ
+              {(selectedCategories.length > 0 || selectedProvider) && (
+                <span className="ml-1 text-orange-600 font-medium">
+                  (絞り込み中)
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-600 font-medium">提供者:</span>
+            <button
+              onClick={() => setSelectedProvider(selectedProvider === '長谷川あかり' ? null : '長谷川あかり')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                selectedProvider === '長谷川あかり'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              長谷川あかり
+            </button>
+            <button
+              onClick={() => setSelectedProvider(selectedProvider === 'もも' ? null : 'もも')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                selectedProvider === 'もも'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              もも
+            </button>
+            <button
+              onClick={() => setSelectedProvider(selectedProvider === 'その他' ? null : 'その他')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                selectedProvider === 'その他'
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              その他
+            </button>
+            {selectedProvider && (
+              <button
+                onClick={() => setSelectedProvider(null)}
+                className="px-2 py-1.5 text-xs text-gray-600 hover:text-gray-800 underline"
+              >
+                クリア
+              </button>
             )}
-          </p>
+          </div>
         </div>
 
         {isLoading ? (
