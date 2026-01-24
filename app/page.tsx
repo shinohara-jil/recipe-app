@@ -211,6 +211,35 @@ export default function Home() {
     }
   };
 
+  const handleDeleteRecipe = async (recipeId: string) => {
+    try {
+      const response = await fetch(`/api/recipes/${recipeId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // レシピ一覧から削除
+        setRecipes(recipes.filter((r) => r.id !== recipeId));
+        // 展開状態をクリア
+        if (expandedRecipeId === recipeId) {
+          setExpandedRecipeId(null);
+        }
+      } else {
+        if (response.status === 503) {
+          alert(
+            'データベースが設定されていません。\n' +
+            'ローカル開発では閲覧のみ可能です。'
+          );
+        } else {
+          alert('レシピの削除に失敗しました');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete recipe:', error);
+      alert('レシピの削除に失敗しました');
+    }
+  };
+
   const handleSubmitRecipe = async (data: {
     title: string;
     url: string;
@@ -500,6 +529,7 @@ export default function Home() {
         onClose={handleCloseModal}
         categories={categories}
         onSubmit={handleSubmitRecipe}
+        onDelete={handleDeleteRecipe}
         editingRecipe={editingRecipe}
       />
 
