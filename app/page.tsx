@@ -59,10 +59,12 @@ export default function Home() {
   const filteredRecipes = (() => {
     let filtered = recipes;
 
-    // カテゴリでフィルタリング
+    // カテゴリでフィルタリング（AND条件：選択されたすべてのカテゴリを含むレシピのみ表示）
     if (selectedCategories.length > 0) {
       filtered = filtered.filter((recipe) =>
-        recipe.categories.some((cat) => selectedCategories.includes(cat.id))
+        selectedCategories.every((selectedId) =>
+          recipe.categories.some((cat) => cat.id === selectedId)
+        )
       );
     }
 
@@ -173,6 +175,38 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Failed to add category:', error);
+      return false;
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: number): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // カテゴリ一覧から削除
+        setCategories(categories.filter((c) => c.id !== categoryId));
+        // レシピ内のカテゴリも削除
+        setRecipes(recipes.map((recipe) => ({
+          ...recipe,
+          categories: recipe.categories.filter((c) => c.id !== categoryId),
+        })));
+        // フィルター選択から削除
+        setSelectedCategories(selectedCategories.filter((id) => id !== categoryId));
+        return true;
+      } else {
+        if (response.status === 503) {
+          alert(
+            'データベースが設定されていません。\n' +
+            'ローカル開発では閲覧のみ可能です。'
+          );
+        }
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to delete category:', error);
       return false;
     }
   };
@@ -475,6 +509,7 @@ export default function Home() {
         categories={categories}
         onUpdate={handleUpdateCategory}
         onAdd={handleAddCategory}
+        onDelete={handleDeleteCategory}
       />
     </div>
   );
