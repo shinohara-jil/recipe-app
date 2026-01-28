@@ -23,6 +23,8 @@ export const mockRecipes: Recipe[] = [
       { id: 2, name: '牛肉' },
     ],
     createdAt: new Date('2026-01-15'),
+    isTodayMenu: true,
+    todayMenuSetAt: new Date('2026-01-28'),
   },
   {
     id: '2',
@@ -33,6 +35,7 @@ export const mockRecipes: Recipe[] = [
       { id: 3, name: '豚肉' },
     ],
     createdAt: new Date('2026-01-14'),
+    isTodayMenu: false,
   },
   {
     id: '3',
@@ -43,6 +46,7 @@ export const mockRecipes: Recipe[] = [
       { id: 6, name: 'ホットクック' },
     ],
     createdAt: new Date('2026-01-13'),
+    isTodayMenu: false,
   },
   {
     id: '4',
@@ -53,6 +57,7 @@ export const mockRecipes: Recipe[] = [
       { id: 4, name: '鶏肉' },
     ],
     createdAt: new Date('2026-01-12'),
+    isTodayMenu: false,
   },
   {
     id: '5',
@@ -67,6 +72,7 @@ export const mockRecipes: Recipe[] = [
       { id: 6, name: 'ホットクック' },
     ],
     createdAt: new Date('2026-01-11'),
+    isTodayMenu: false,
   },
   {
     id: '6',
@@ -77,5 +83,6 @@ export const mockRecipes: Recipe[] = [
       { id: 5, name: 'その他' },
     ],
     createdAt: new Date('2026-01-10'),
+    isTodayMenu: false,
   },
 ];

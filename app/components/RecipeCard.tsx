@@ -11,9 +11,10 @@ interface RecipeCardProps {
   onClick: () => void;
   isExpanded: boolean;
   onEdit: () => void;
+  onToggleTodayMenu: () => void;
 }
 
-export default function RecipeCard({ recipe, onClick, isExpanded, onEdit }: RecipeCardProps) {
+export default function RecipeCard({ recipe, onClick, isExpanded, onEdit, onToggleTodayMenu }: RecipeCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
@@ -43,9 +44,16 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit }: Reci
     <>
       <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-lg">
       <div onClick={onClick} className="cursor-pointer p-3">
-        <h3 className="text-base font-semibold text-gray-800 mb-2">
-          {recipe.title}
-        </h3>
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="text-base font-semibold text-gray-800 flex-1">
+            {recipe.title}
+          </h3>
+          {recipe.isTodayMenu && (
+            <span className="ml-2 px-2 py-1 text-xs font-bold bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-md shadow-sm whitespace-nowrap">
+              今日のメニュー
+            </span>
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-1.5">
           {recipe.categories.map((category) => (
@@ -124,29 +132,58 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit }: Reci
               <div className="text-xs text-gray-500">
                 登録日: {recipe.createdAt.toLocaleDateString('ja-JP')}
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit();
-                }}
-                className="p-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-full transition-colors"
-                title="編集"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5"
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleTodayMenu();
+                  }}
+                  className={`p-2 rounded-full transition-colors ${
+                    recipe.isTodayMenu
+                      ? 'text-orange-500 bg-orange-50 hover:bg-orange-100'
+                      : 'text-gray-500 hover:text-orange-500 hover:bg-orange-50'
+                  }`}
+                  title={recipe.isTodayMenu ? '今日のメニューから外す' : '今日のメニューにする'}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill={recipe.isTodayMenu ? 'currentColor' : 'none'}
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                  }}
+                  className="p-2 text-gray-500 hover:text-orange-500 hover:bg-orange-50 rounded-full transition-colors"
+                  title="編集"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>

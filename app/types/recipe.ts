@@ -11,4 +11,6 @@ export interface Recipe {
   imageUrls?: string[];
   categories: Category[];
   createdAt: Date;
+  isTodayMenu: boolean;
+  todayMenuSetAt?: Date;
 }
