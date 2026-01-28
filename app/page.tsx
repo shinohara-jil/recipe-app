@@ -24,6 +24,47 @@ export default function Home() {
     fetchRecipes();
   }, []);
 
+  // 今日のメニューの日付チェック(午前0時を超えたら自動解除)
+  useEffect(() => {
+    const checkTodayMenu = async () => {
+      const todayMenuRecipe = recipes.find((r) => r.isTodayMenu);
+      if (!todayMenuRecipe || !todayMenuRecipe.todayMenuSetAt) return;
+
+      const setDate = new Date(todayMenuRecipe.todayMenuSetAt);
+      const now = new Date();
+
+      // 設定日と現在日が異なる場合(日付が変わった場合)、フラグを解除
+      if (
+        setDate.getFullYear() !== now.getFullYear() ||
+        setDate.getMonth() !== now.getMonth() ||
+        setDate.getDate() !== now.getDate()
+      ) {
+        try {
+          const response = await fetch(`/api/recipes/${todayMenuRecipe.id}/today-menu`, {
+            method: 'DELETE',
+          });
+
+          if (response.ok) {
+            // ローカルステートを更新
+            setRecipes(recipes.map((r) =>
+              r.id === todayMenuRecipe.id
+                ? { ...r, isTodayMenu: false, todayMenuSetAt: undefined }
+                : r
+            ));
+          }
+        } catch (error) {
+          console.error('Failed to clear today menu:', error);
+        }
+      }
+    };
+
+    checkTodayMenu();
+
+    // 1分ごとにチェック
+    const interval = setInterval(checkTodayMenu, 60000);
+    return () => clearInterval(interval);
+  }, [recipes]);
+
   const fetchCategories = async () => {
     try {
       const response = await fetch('/api/categories');
@@ -46,6 +87,8 @@ export default function Home() {
           ...recipe,
           imageUrls: recipe.image_urls || [],
           createdAt: new Date(recipe.created_at),
+          isTodayMenu: recipe.is_today_menu || false,
+          todayMenuSetAt: recipe.today_menu_set_at ? new Date(recipe.today_menu_set_at) : undefined,
         }));
         setRecipes(formattedRecipes);
       }
@@ -57,7 +100,8 @@ export default function Home() {
   };
 
   const filteredRecipes = (() => {
-    let filtered = recipes;
+    // 元の配列を変更しないようにコピーを作成
+    let filtered = [...recipes];
 
     // カテゴリでフィルタリング（AND条件：選択されたすべてのカテゴリを含むレシピのみ表示）
     if (selectedCategories.length > 0) {
@@ -77,6 +121,16 @@ export default function Home() {
         return recipe.provider === selectedProvider;
       });
     }
+
+    // ソート: 今日のメニューを最上部に、その後は作成日時の降順
+    filtered.sort((a, b) => {
+      // 今日のメニューが優先
+      if (a.isTodayMenu && !b.isTodayMenu) return -1;
+      if (!a.isTodayMenu && b.isTodayMenu) return 1;
+
+      // 両方とも今日のメニュー、または両方とも今日のメニューでない場合は作成日時で降順
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
 
     return filtered;
   })();
@@ -210,6 +264,56 @@ export default function Home() {
       return false;
     }
   };
+
+  const handleToggleTodayMenu = async (recipe: Recipe) => {
+    try {
+      if (recipe.isTodayMenu) {
+        // 解除
+        const response = await fetch(`/api/recipes/${recipe.id}/today-menu`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          setRecipes(recipes.map((r) =>
+            r.id === recipe.id
+              ? { ...r, isTodayMenu: false, todayMenuSetAt: undefined }
+              : r
+          ));
+        } else {
+          if (response.status === 503) {
+            alert('データベースが設定されていません。');
+          } else {
+            alert('今日のメニューの解除に失敗しました');
+          }
+        }
+      } else {
+        // 設定
+        const response = await fetch(`/api/recipes/${recipe.id}/today-menu`, {
+          method: 'PUT',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // 他のレシピの今日のメニューフラグを解除し、このレシピのみ設定
+          setRecipes(recipes.map((r) =>
+            r.id === recipe.id
+              ? { ...r, isTodayMenu: true, todayMenuSetAt: new Date(data.today_menu_set_at) }
+              : { ...r, isTodayMenu: false, todayMenuSetAt: undefined }
+          ));
+        } else {
+          if (response.status === 503) {
+            alert('データベースが設定されていません。');
+          } else {
+            alert('今日のメニューの設定に失敗しました');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle today menu:', error);
+      alert('今日のメニューの設定変更に失敗しました');
+    }
+  };
+
 
   const handleSubmitRecipe = async (data: {
     title: string;
@@ -462,6 +566,7 @@ export default function Home() {
                   onClick={() => handleRecipeClick(recipe.id)}
                   isExpanded={expandedRecipeId === recipe.id}
                   onEdit={() => handleEditRecipe(recipe)}
+                  onToggleTodayMenu={() => handleToggleTodayMenu(recipe)}
                 />
               ))}
             </div>

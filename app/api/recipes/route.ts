@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
           created_at: recipe.createdAt.toISOString(),
           updated_at: recipe.createdAt.toISOString(),
           image_urls: recipe.imageUrls || [],
+          is_today_menu: recipe.isTodayMenu,
+          today_menu_set_at: recipe.todayMenuSetAt?.toISOString(),
         }))
       );
     }
@@ -30,6 +32,8 @@ export async function GET(request: NextRequest) {
           r.title,
           r.url,
           r.provider,
+          r.is_today_menu,
+          r.today_menu_set_at,
           r.created_at,
           r.updated_at,
           COALESCE(
@@ -56,7 +60,7 @@ export async function GET(request: NextRequest) {
           WHERE category_id = ${catId}
         )
         GROUP BY r.id
-        ORDER BY r.created_at DESC
+        ORDER BY r.is_today_menu DESC, r.created_at DESC
       `;
     } else {
       // 全件取得
@@ -66,6 +70,8 @@ export async function GET(request: NextRequest) {
           r.title,
           r.url,
           r.provider,
+          r.is_today_menu,
+          r.today_menu_set_at,
           r.created_at,
           r.updated_at,
           COALESCE(
@@ -87,7 +93,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
         LEFT JOIN categories c ON rc.category_id = c.id
         GROUP BY r.id
-        ORDER BY r.created_at DESC
+        ORDER BY r.is_today_menu DESC, r.created_at DESC
       `;
     }
 

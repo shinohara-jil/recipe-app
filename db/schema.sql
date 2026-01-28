@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS recipes (
   title VARCHAR(255) NOT NULL,
   url TEXT,
   provider VARCHAR(100),
+  is_today_menu BOOLEAN NOT NULL DEFAULT FALSE,
+  today_menu_set_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS recipe_images (
 
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_recipes_created_at ON recipes(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_recipes_is_today_menu ON recipes(is_today_menu) WHERE is_today_menu = TRUE;
 CREATE INDEX IF NOT EXISTS idx_recipe_categories_recipe_id ON recipe_categories(recipe_id);
 CREATE INDEX IF NOT EXISTS idx_recipe_categories_category_id ON recipe_categories(category_id);
 CREATE INDEX IF NOT EXISTS idx_recipe_images_recipe_id ON recipe_images(recipe_id);
