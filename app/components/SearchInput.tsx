@@ -27,7 +27,7 @@ export default function SearchInput({ value, onChange }: SearchInputProps) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="レシピ名で検索..."
-          className="flex-1 bg-transparent outline-none text-sm text-gray-800 placeholder-gray-400"
+          className="flex-1 bg-transparent outline-none text-base text-gray-800 placeholder-gray-400"
         />
         {value && (
           <button
