@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import RecipeCard from './components/RecipeCard';
 import RecipeModal from './components/RecipeModal';
 import CategoryFilter from './components/CategoryFilter';
+import SearchInput from './components/SearchInput';
 import CategoryEditModal from './components/CategoryEditModal';
 import { Recipe, Category } from './types/recipe';
 
@@ -17,6 +18,7 @@ export default function Home() {
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
@@ -102,6 +104,14 @@ export default function Home() {
   const filteredRecipes = (() => {
     // 元の配列を変更しないようにコピーを作成
     let filtered = [...recipes];
+
+    // フリーワード検索（タイトルの部分一致）
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((recipe) =>
+        recipe.title.toLowerCase().includes(query)
+      );
+    }
 
     // カテゴリでフィルタリング（AND条件：選択されたすべてのカテゴリを含むレシピのみ表示）
     if (selectedCategories.length > 0) {
@@ -488,6 +498,8 @@ export default function Home() {
           </div>
         </header>
 
+        <SearchInput value={searchQuery} onChange={setSearchQuery} />
+
         {categories.length > 0 && (
           <CategoryFilter
             categories={categories}
@@ -501,7 +513,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-xs text-gray-600">
               全 {filteredRecipes.length} 件のレシピ
-              {(selectedCategories.length > 0 || selectedProvider) && (
+              {(selectedCategories.length > 0 || selectedProvider || searchQuery.trim()) && (
                 <span className="ml-1 text-orange-600 font-medium">
                   (絞り込み中)
                 </span>
@@ -575,13 +587,17 @@ export default function Home() {
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">🔍</div>
                 <p className="text-gray-600 text-lg">
-                  {selectedCategories.length > 0
+                  {(selectedCategories.length > 0 || selectedProvider || searchQuery.trim())
                     ? '該当するレシピが見つかりませんでした'
                     : 'レシピがまだ登録されていません'}
                 </p>
-                {selectedCategories.length > 0 ? (
+                {(selectedCategories.length > 0 || selectedProvider || searchQuery.trim()) ? (
                   <button
-                    onClick={handleClearFilter}
+                    onClick={() => {
+                      handleClearFilter();
+                      setSelectedProvider(null);
+                      setSearchQuery('');
+                    }}
                     className="mt-4 text-blue-600 hover:text-blue-800 font-medium"
                   >
                     フィルターをクリア
