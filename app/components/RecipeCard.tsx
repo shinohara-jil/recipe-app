@@ -20,6 +20,7 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit, onTogg
   const [modalImageIndex, setModalImageIndex] = useState(0);
 
   const hasMultipleImages = recipe.imageUrls && recipe.imageUrls.length > 1;
+  const thumbnailUrl = recipe.imageUrls && recipe.imageUrls.length > 0 ? recipe.imageUrls[0] : null;
 
   const goToPrevious = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,27 +44,46 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit, onTogg
   return (
     <>
       <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-lg">
-      <div onClick={onClick} className="cursor-pointer p-3">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="text-base font-semibold text-gray-800 flex-1">
-            {recipe.title}
-          </h3>
-          {recipe.isTodayMenu && (
-            <span className="ml-2 px-2 py-1 text-xs font-bold bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-md shadow-sm whitespace-nowrap">
-              今日のメニュー
-            </span>
+      <div onClick={onClick} className="cursor-pointer p-3 flex gap-3">
+        {/* サムネイル */}
+        <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+          {thumbnailUrl ? (
+            <Image
+              src={thumbnailUrl}
+              alt={recipe.title}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-[10px]">
+              No Image
+            </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {recipe.categories.map((category) => (
-            <span
-              key={category.id}
-              className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryColor(category.id)}`}
-            >
-              {category.name}
-            </span>
-          ))}
+        {/* コンテンツ */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between mb-1">
+            <h3 className="text-base font-semibold text-gray-800 flex-1 truncate">
+              {recipe.title}
+            </h3>
+            {recipe.isTodayMenu && (
+              <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-md shadow-sm whitespace-nowrap">
+                今日のメニュー
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-1">
+            {recipe.categories.map((category) => (
+              <span
+                key={category.id}
+                className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryColor(category.id)}`}
+              >
+                {category.name}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
