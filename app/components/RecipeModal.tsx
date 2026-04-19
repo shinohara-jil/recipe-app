@@ -61,20 +61,53 @@ export default function RecipeModal({
 
   if (!isOpen) return null;
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isConverting, setIsConverting] = useState(false);
+
+  const convertHeicToJpeg = async (file: File): Promise<File> => {
+    const heic2any = (await import('heic2any')).default;
+    const blob = await heic2any({
+      blob: file,
+      toType: 'image/jpeg',
+      quality: 0.9,
+    });
+    const resultBlob = Array.isArray(blob) ? blob[0] : blob;
+    return new File([resultBlob], file.name.replace(/\.heic$/i, '.jpg'), {
+      type: 'image/jpeg',
+    });
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newFiles = Array.from(files);
-      setImageFiles((prev) => [...prev, ...newFiles]);
+      setIsConverting(true);
+      const processedFiles: File[] = [];
+
+      for (const file of Array.from(files)) {
+        try {
+          if (file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic') {
+            const convertedFile = await convertHeicToJpeg(file);
+            processedFiles.push(convertedFile);
+          } else {
+            processedFiles.push(file);
+          }
+        } catch (error) {
+          console.error('Failed to convert HEIC:', error);
+          processedFiles.push(file);
+        }
+      }
+
+      setImageFiles((prev) => [...prev, ...processedFiles]);
 
       // プレビュー生成
-      newFiles.forEach((file) => {
+      processedFiles.forEach((file) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           setImagePreviews((prev) => [...prev, reader.result as string]);
         };
         reader.readAsDataURL(file);
       });
+
+      setIsConverting(false);
     }
   };
 
@@ -238,8 +271,12 @@ export default function RecipeModal({
               accept="image/*,.heic,.heif"
               multiple
               onChange={handleImageChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+              disabled={isConverting}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 disabled:opacity-50"
             />
+            {isConverting && (
+              <p className="mt-2 text-sm text-orange-600">画像を変換中...</p>
+            )}
 
             {/* 既存の画像（編集モード時） */}
             {existingImageUrls.length > 0 && (
