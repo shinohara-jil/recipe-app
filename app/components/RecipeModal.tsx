@@ -34,6 +34,7 @@ export default function RecipeModal({
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const [isConverting, setIsConverting] = useState(false);
 
   const isEditMode = !!editingRecipe;
 
@@ -60,8 +61,6 @@ export default function RecipeModal({
   }, [isOpen, editingRecipe]);
 
   if (!isOpen) return null;
-
-  const [isConverting, setIsConverting] = useState(false);
 
   const convertHeicToJpeg = async (file: File): Promise<File> => {
     const heic2any = (await import('heic2any')).default;
