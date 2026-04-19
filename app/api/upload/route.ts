@@ -21,8 +21,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ファイルタイプチェック
-    if (!file.type.startsWith('image/')) {
+    // ファイルタイプチェック（HEIC/HEIFも許可）
+    const allowedTypes = ['image/', 'application/octet-stream'];
+    const allowedExtensions = ['.heic', '.heif', '.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const fileName = file.name.toLowerCase();
+    const isAllowedType = allowedTypes.some(type => file.type.startsWith(type)) || file.type === '';
+    const isAllowedExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
+
+    if (!isAllowedType && !isAllowedExtension) {
       return NextResponse.json(
         { error: 'Only image files are allowed' },
         { status: 400 }
