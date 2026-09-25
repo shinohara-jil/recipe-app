@@ -88,7 +88,7 @@ export default function RecipeCard({
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-lg">
+      <div id={`recipe-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-lg scroll-mt-3">
       <div onClick={onClick} className="cursor-pointer p-3 flex gap-3">
         {/* サムネイル */}
         <div className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">

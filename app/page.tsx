@@ -8,6 +8,7 @@ import SearchInput from './components/SearchInput';
 import CategoryEditModal from './components/CategoryEditModal';
 import PantryModal from './components/PantryModal';
 import PasscodeModal from './components/PasscodeModal';
+import ChatModal, { type ChatMessage } from './components/ChatModal';
 import { Recipe, Category, Ingredient, PantryItem, ExtractionStatus } from './types/recipe';
 
 // APIから届くレシピの形
@@ -64,6 +65,9 @@ export default function Home() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pantryNames = new Set(pantry.map((p) => p.name));
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  // 相談の会話はページを開いている間だけ残す（保存はしない）
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
@@ -195,8 +199,7 @@ export default function Home() {
     try {
       const response = await fetch(`/api/recipes/${recipeId}/extract`, { method: 'POST' });
       if (response.status === 401) {
-        afterPasscode.current = () => requestExtraction(recipeId);
-        setIsPasscodeModalOpen(true);
+        requirePasscode(() => requestExtraction(recipeId));
         return;
       }
       if (response.ok) {
@@ -260,6 +263,24 @@ export default function Home() {
       showToast('家にある物から外せませんでした');
       return false;
     }
+  };
+
+  // 合言葉が未入力のとき、入力してもらってから retry を実行する
+  const requirePasscode = (retry: () => void) => {
+    afterPasscode.current = retry;
+    setIsPasscodeModalOpen(true);
+  };
+
+  // 相談で提案されたレシピを開く（絞り込みを外して、そのレシピまでスクロール）
+  const openRecipeFromChat = (recipeId: string) => {
+    setIsChatOpen(false);
+    setSearchQuery('');
+    setSelectedCategories([]);
+    setSelectedProvider(null);
+    setExpandedRecipeId(recipeId);
+    setTimeout(() => {
+      document.getElementById(`recipe-${recipeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   // レシピの材料の横の「家にある」ボタンから追加
@@ -832,6 +853,29 @@ export default function Home() {
           onAdd={async (name) => !!(await addPantryItem(name))}
           onDelete={handleDeletePantryFromModal}
         />
+      )}
+
+      {isChatOpen && (
+        <ChatModal
+          onClose={() => setIsChatOpen(false)}
+          messages={chatMessages}
+          onMessagesChange={setChatMessages}
+          recipes={recipes}
+          onOpenRecipe={openRecipeFromChat}
+          onToggleTodayMenu={handleToggleTodayMenu}
+          requirePasscode={requirePasscode}
+        />
+      )}
+
+      {!isChatOpen && (
+        <button
+          type="button"
+          onClick={() => setIsChatOpen(true)}
+          className="fixed right-4 bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-40 flex items-center gap-1.5 rounded-full bg-gray-800 px-4 py-3 font-bold text-white shadow-xl hover:bg-gray-700 active:scale-95"
+        >
+          <span aria-hidden="true">💬</span>
+          AIに相談
+        </button>
       )}
 
       {isPasscodeModalOpen && (

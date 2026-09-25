@@ -80,14 +80,14 @@ const SYSTEM = `あなたは家庭料理レシピの材料を整理するアシ�
 - features は材料と作り方から判断する。`;
 
 let client: GoogleGenAI | null = null;
-function getClient() {
+export function getGeminiClient() {
   if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY が設定されていません');
   client ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   return client;
 }
 
 export async function askGemini(title: string, pantry: string[], text: string | null, images: ImagePart[]): Promise<ExtractionResult> {
-  const interaction = await getClient().interactions.create({
+  const interaction = await getGeminiClient().interactions.create({
     model: GEMINI_MODEL,
     store: false,
     system_instruction: SYSTEM,

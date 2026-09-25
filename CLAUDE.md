@@ -55,6 +55,7 @@ npm run build        # ビルド確認
 | `/api/pantry` | GET/POST | 家にある物の一覧/追加 |
 | `/api/pantry/[id]` | DELETE | 家にある物から外す |
 | `/api/ai-auth` | GET/POST | 合言葉の確認（合えば30日有効のクッキー） |
+| `/api/chat` | POST | AI相談（要合言葉）。レシピ帳から最大3件を提案 |
 
 ### 材料の自動読み取り（app/lib/extraction/）
 
@@ -62,6 +63,13 @@ npm run build        # ビルド確認
 - X は埋め込み用の入口、Instagram はリンクプレビュー用の説明文、レシピサイトは構造化データ（JSON-LD）を優先（`sources.ts`）。X・Instagram は非公式な方法なので、急に読めなくなることがある
 - AI は Gemini（`gemini-3.8-flash`、Interactions API、`store: false`）。材料と一緒に「特徴」も作り `recipes.features` に保存（画面には出さない。AI相談用）
 - 材料は1行の文字で持つ。家にある物との照らし合わせは `standard_name`（AIがそろえた名前）、無ければ `nameOf()`（`app/lib/ingredients.ts`）で取り出した材料名で完全一致
+### AI相談（app/lib/chat/recommend.ts）
+
+- 相談のたびに全レシピを「番号. 料理名｜ジャンル・手軽さ・時間｜味・場面｜主な食材」の1行要約にして送る（`recipes.features` を使用）
+- 費用を抑えるため `gemini-3.5-flash-lite` を使用（1回約0.3円）。発言は500文字、会話は直近10回分まで
+- AIは番号で答え、プログラムが実在するレシピか・この会話で提案済みでないかを確かめてから返す
+- 会話は保存しない（ページを開いている間だけ `page.tsx` の state に残る）
+
 - 登録済みレシピの一括読み取り: `npx tsx --env-file=.env.local scripts/extract_recipes.ts`（.env.local のDBを直接）、または `node --env-file=.env.local scripts/extract_via_api.mjs <アプリのURL>`（公開中のアプリ経由。本番用）
 
 ### データベース（db/schema.sql）
