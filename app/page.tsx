@@ -1,12 +1,48 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import RecipeCard from './components/RecipeCard';
 import RecipeModal from './components/RecipeModal';
 import CategoryFilter from './components/CategoryFilter';
 import SearchInput from './components/SearchInput';
 import CategoryEditModal from './components/CategoryEditModal';
-import { Recipe, Category } from './types/recipe';
+import PantryModal from './components/PantryModal';
+import PasscodeModal from './components/PasscodeModal';
+import { Recipe, Category, Ingredient, PantryItem, ExtractionStatus } from './types/recipe';
+
+// APIから届くレシピの形
+interface RecipeRow {
+  id: string;
+  title: string;
+  url?: string;
+  provider?: string;
+  categories: Category[];
+  image_urls?: string[];
+  created_at: string;
+  is_today_menu?: boolean;
+  today_menu_set_at?: string;
+  ingredients?: Ingredient[];
+  servings?: string | null;
+  extraction_status?: ExtractionStatus;
+  extraction_source?: string | null;
+}
+
+// APIのレシピ（スネークケース）を画面用の形に変換
+const toRecipe = (row: RecipeRow): Recipe => ({
+  id: row.id,
+  title: row.title,
+  url: row.url,
+  provider: row.provider,
+  categories: row.categories,
+  imageUrls: row.image_urls || [],
+  createdAt: new Date(row.created_at),
+  isTodayMenu: row.is_today_menu || false,
+  todayMenuSetAt: row.today_menu_set_at ? new Date(row.today_menu_set_at) : undefined,
+  ingredients: row.ingredients || [],
+  servings: row.servings,
+  extractionStatus: row.extraction_status || 'none',
+  extractionSource: row.extraction_source,
+});
 
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -19,12 +55,54 @@ export default function Home() {
   const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pantry, setPantry] = useState<PantryItem[]>([]);
+  const [isPantryModalOpen, setIsPantryModalOpen] = useState(false);
+  const [isPasscodeModalOpen, setIsPasscodeModalOpen] = useState(false);
+  // 合言葉の入力が済んだら実行する処理（読み取りの再開など）
+  const afterPasscode = useRef<(() => void) | null>(null);
+  const [toast, setToast] = useState<{ message: string; action?: { label: string; onClick: () => void } } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pantryNames = new Set(pantry.map((p) => p.name));
 
   // カテゴリとレシピの初期データ取得
   useEffect(() => {
     fetchCategories();
     fetchRecipes();
+    fetchPantry();
   }, []);
+
+  // 読み取り中のレシピがあれば、3秒おきに状態を確認して画面に反映する
+  const processingIds = recipes.filter((r) => r.extractionStatus === 'processing').map((r) => r.id).join(',');
+  useEffect(() => {
+    if (!processingIds) return;
+    const timer = setInterval(async () => {
+      for (const id of processingIds.split(',')) {
+        try {
+          const response = await fetch(`/api/recipes/${id}/extract`);
+          if (!response.ok) continue;
+          const data = await response.json();
+          if (data.extraction_status === 'processing') continue;
+          updateRecipe(id, {
+            ingredients: data.ingredients,
+            servings: data.servings,
+            extractionStatus: data.extraction_status,
+            extractionSource: data.extraction_source,
+          });
+          const title = recipes.find((r) => r.id === id)?.title ?? 'レシピ';
+          showToast(
+            data.extraction_status === 'failed'
+              ? `「${title}」の材料を読み取れませんでした`
+              : `「${title}」の材料を読み取りました`
+          );
+        } catch (error) {
+          console.error('Failed to check extraction:', error);
+        }
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processingIds]);
 
   // 今日のメニューの日付チェック(午前0時を超えたら自動解除)
   useEffect(() => {
@@ -85,19 +163,119 @@ export default function Home() {
       const response = await fetch('/api/recipes');
       if (response.ok) {
         const data = await response.json();
-        const formattedRecipes = data.map((recipe: any) => ({
-          ...recipe,
-          imageUrls: recipe.image_urls || [],
-          createdAt: new Date(recipe.created_at),
-          isTodayMenu: recipe.is_today_menu || false,
-          todayMenuSetAt: recipe.today_menu_set_at ? new Date(recipe.today_menu_set_at) : undefined,
-        }));
-        setRecipes(formattedRecipes);
+        setRecipes(data.map(toRecipe));
       }
     } catch (error) {
       console.error('Failed to fetch recipes:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchPantry = async () => {
+    try {
+      const response = await fetch('/api/pantry');
+      if (response.ok) setPantry(await response.json());
+    } catch (error) {
+      console.error('Failed to fetch pantry:', error);
+    }
+  };
+
+  const showToast = (message: string, action?: { label: string; onClick: () => void }) => {
+    setToast({ message, action });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 4000);
+  };
+
+  const updateRecipe = (id: string, changes: Partial<Recipe>) =>
+    setRecipes((prev) => prev.map((r) => (r.id === id ? { ...r, ...changes } : r)));
+
+  // 材料の読み取りを始める。合言葉が未入力なら入力してもらってから続ける
+  const requestExtraction = async (recipeId: string) => {
+    try {
+      const response = await fetch(`/api/recipes/${recipeId}/extract`, { method: 'POST' });
+      if (response.status === 401) {
+        afterPasscode.current = () => requestExtraction(recipeId);
+        setIsPasscodeModalOpen(true);
+        return;
+      }
+      if (response.ok) {
+        updateRecipe(recipeId, { extractionStatus: 'processing' });
+      } else if (response.status === 503) {
+        alert('データベースが設定されていないため、材料を読み取れません。');
+      } else {
+        showToast('材料の読み取りを始められませんでした');
+      }
+    } catch (error) {
+      console.error('Failed to start extraction:', error);
+      showToast('材料の読み取りを始められませんでした');
+    }
+  };
+
+  const handleSaveIngredients = async (recipeId: string, ingredients: Ingredient[]) => {
+    try {
+      const response = await fetch(`/api/recipes/${recipeId}/ingredients`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredients }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      updateRecipe(recipeId, { ingredients: data.ingredients, extractionStatus: data.extraction_status });
+      showToast('材料を保存しました');
+      return true;
+    } catch (error) {
+      console.error('Failed to save ingredients:', error);
+      showToast('材料を保存できませんでした');
+      return false;
+    }
+  };
+
+  const addPantryItem = async (name: string) => {
+    try {
+      const response = await fetch('/api/pantry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const item: PantryItem = await response.json();
+      setPantry((prev) => (prev.some((p) => p.id === item.id) ? prev : [...prev, item]));
+      return item;
+    } catch (error) {
+      console.error('Failed to add pantry item:', error);
+      showToast('家にある物に追加できませんでした');
+      return null;
+    }
+  };
+
+  const deletePantryItem = async (item: PantryItem) => {
+    try {
+      const response = await fetch(`/api/pantry/${item.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setPantry((prev) => prev.filter((p) => p.id !== item.id));
+      return true;
+    } catch (error) {
+      console.error('Failed to delete pantry item:', error);
+      showToast('家にある物から外せませんでした');
+      return false;
+    }
+  };
+
+  // レシピの材料の横の「家にある」ボタンから追加
+  const handleAddPantryFromRecipe = async (name: string) => {
+    const item = await addPantryItem(name);
+    if (item) {
+      showToast(`「${item.name}」を家にある物に追加しました。ほかのレシピにも反映されます`, {
+        label: '元に戻す',
+        onClick: () => deletePantryItem(item),
+      });
+    }
+  };
+
+  const handleDeletePantryFromModal = async (item: PantryItem) => {
+    if (await deletePantryItem(item)) {
+      showToast(`「${item.name}」を外しました`, { label: '元に戻す', onClick: () => addPantryItem(item.name) });
     }
   };
 
@@ -387,15 +565,21 @@ export default function Home() {
 
         if (response.ok) {
           const updatedRecipe = await response.json();
+          const sourceChanged =
+            (editingRecipe.url || '') !== (data.url || '') ||
+            (editingRecipe.imageUrls || []).join() !== allImageUrls.join();
           setRecipes(recipes.map((r) =>
             r.id === editingRecipe.id
               ? {
+                  ...r,
                   ...updatedRecipe,
                   imageUrls: updatedRecipe.image_urls || [],
                   createdAt: new Date(updatedRecipe.created_at),
                 }
               : r
           ));
+          // リンクや画像が変わったら材料を読み取り直す
+          if (sourceChanged && (data.url || allImageUrls.length)) requestExtraction(editingRecipe.id);
         } else {
           const errorData = await response.json();
           if (response.status === 503) {
@@ -426,14 +610,9 @@ export default function Home() {
 
         if (response.ok) {
           const newRecipe = await response.json();
-          setRecipes([
-            {
-              ...newRecipe,
-              imageUrls: newRecipe.image_urls || [],
-              createdAt: new Date(newRecipe.created_at),
-            },
-            ...recipes,
-          ]);
+          setRecipes([toRecipe(newRecipe), ...recipes]);
+          // 登録したら材料の読み取りを自動で始める
+          if (data.url || allImageUrls.length) requestExtraction(newRecipe.id);
         } else {
           const errorData = await response.json();
           if (response.status === 503) {
@@ -462,6 +641,14 @@ export default function Home() {
               🍳 レシピ帳
             </h1>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsPantryModalOpen(true)}
+                className="px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap flex items-center gap-1"
+                title="家にある物"
+              >
+                <span aria-hidden="true">⌂</span>
+                家にある物
+              </button>
               <button
                 onClick={() => setIsCategoryEditModalOpen(true)}
                 className="px-2 py-1.5 sm:px-3 sm:py-2 border border-gray-300 text-gray-700 rounded-full font-medium hover:bg-gray-50 transition-all active:scale-95 text-xs sm:text-sm whitespace-nowrap flex items-center gap-1"
@@ -579,6 +766,11 @@ export default function Home() {
                   isExpanded={expandedRecipeId === recipe.id}
                   onEdit={() => handleEditRecipe(recipe)}
                   onToggleTodayMenu={() => handleToggleTodayMenu(recipe)}
+                  pantryNames={pantryNames}
+                  onAddPantry={handleAddPantryFromRecipe}
+                  onSaveIngredients={(ingredients) => handleSaveIngredients(recipe.id, ingredients)}
+                  onExtract={() => requestExtraction(recipe.id)}
+                  onToast={showToast}
                 />
               ))}
             </div>
@@ -632,6 +824,51 @@ export default function Home() {
         onAdd={handleAddCategory}
         onDelete={handleDeleteCategory}
       />
+
+      {isPantryModalOpen && (
+        <PantryModal
+          onClose={() => setIsPantryModalOpen(false)}
+          items={pantry}
+          onAdd={async (name) => !!(await addPantryItem(name))}
+          onDelete={handleDeletePantryFromModal}
+        />
+      )}
+
+      {isPasscodeModalOpen && (
+        <PasscodeModal
+          onClose={() => {
+            setIsPasscodeModalOpen(false);
+            afterPasscode.current = null;
+          }}
+          onSuccess={() => {
+            setIsPasscodeModalOpen(false);
+            const next = afterPasscode.current;
+            afterPasscode.current = null;
+            next?.();
+          }}
+        />
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed left-1/2 -translate-x-1/2 bottom-6 z-[70] flex items-center gap-3 max-w-[calc(100%-2rem)] rounded-lg bg-gray-800 px-4 py-2.5 text-sm text-white shadow-xl"
+        >
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button
+              type="button"
+              onClick={() => {
+                toast.action?.onClick();
+                setToast(null);
+              }}
+              className="whitespace-nowrap font-bold text-orange-300"
+            >
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

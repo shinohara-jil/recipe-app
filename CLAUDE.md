@@ -20,6 +20,8 @@ npm run build        # ビルド確認
 
 - `DATABASE_URL` - Neon PostgreSQL接続文字列（未設定時はモックデータ使用）
 - `BLOB_READ_WRITE_TOKEN` - Vercel Blob Storage トークン
+- `GEMINI_API_KEY` - Google Gemini の鍵（材料の自動読み取り）
+- `AI_PASSCODE` - AI機能の合言葉（家族だけが使えるようにする）
 
 ## アーキテクチャ
 
@@ -48,6 +50,19 @@ npm run build        # ビルド確認
 | `/api/categories` | GET/POST | カテゴリ一覧取得/新規追加 |
 | `/api/categories/[id]` | PUT/DELETE | カテゴリ編集/削除 |
 | `/api/upload` | POST | 画像アップロード（multipart/form-data） |
+| `/api/recipes/[id]/extract` | POST/GET | 材料の読み取り開始（要合言葉。`after()` で裏処理）/ 状態確認 |
+| `/api/recipes/[id]/ingredients` | PUT | 材料を手で直したときの保存（丸ごと置き換え） |
+| `/api/pantry` | GET/POST | 家にある物の一覧/追加 |
+| `/api/pantry/[id]` | DELETE | 家にある物から外す |
+| `/api/ai-auth` | GET/POST | 合言葉の確認（合えば30日有効のクッキー） |
+
+### 材料の自動読み取り（app/lib/extraction/）
+
+- 読む順番: URLを先に読み、推測しかできない／読めないときは登録画像を読む（`extract.ts`）
+- X は埋め込み用の入口、Instagram はリンクプレビュー用の説明文、レシピサイトは構造化データ（JSON-LD）を優先（`sources.ts`）。X・Instagram は非公式な方法なので、急に読めなくなることがある
+- AI は Gemini（`gemini-3.8-flash`、Interactions API、`store: false`）。材料と一緒に「特徴」も作り `recipes.features` に保存（画面には出さない。AI相談用）
+- 材料は1行の文字で持つ。家にある物との照らし合わせは `standard_name`（AIがそろえた名前）、無ければ `nameOf()`（`app/lib/ingredients.ts`）で取り出した材料名で完全一致
+- 登録済みレシピの一括読み取り: `npx tsx --env-file=.env.local scripts/extract_recipes.ts`（.env.local のDBを直接）、または `node --env-file=.env.local scripts/extract_via_api.mjs <アプリのURL>`（公開中のアプリ経由。本番用）
 
 ### データベース（db/schema.sql）
 
@@ -62,6 +77,14 @@ npm run build        # ビルド確認
 
 **recipe_images:** `image_url` + `display_order` で画像管理
 
+**recipes の読み取り関連カラム:** `extraction_status`（none / processing / done / guess / failed）、`extraction_source`、`extraction_note`、`extracted_at`、`servings`、`features`（JSONB）。processing のまま5分たったものは一覧で failed 扱い
+
+**recipe_ingredients:** 材料1行ずつ（`text`、`standard_name`、`is_guess`、`display_order`）
+
+**pantry_items:** 家にある物（`name` UNIQUE）
+
+DB変更は `db/migration_*.sql` に書き、`node --env-file=.env.local scripts/run_migration.mjs <ファイル>` で反映
+
 ### 型定義（app/types/recipe.ts）
 
 ```typescript
@@ -75,6 +98,10 @@ interface Recipe {
   createdAt: Date;
   isTodayMenu: boolean;
   todayMenuSetAt?: Date;
+  ingredients: Ingredient[];        // { text, standardName?, isGuess }
+  servings?: string | null;
+  extractionStatus: ExtractionStatus;
+  extractionSource?: string | null;
 }
 ```
 

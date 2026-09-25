@@ -9,7 +9,8 @@ export const categories: Category[] = [
   { id: 6, name: 'ホットクック' },
 ];
 
-export const mockRecipes: Recipe[] = [
+// 材料・読み取り状態は API 側で既定値（空・未読み取り）を付ける
+export const mockRecipes: Omit<Recipe, 'ingredients' | 'extractionStatus'>[] = [
   {
     id: '1',
     title: '定番のハンバーグ',
