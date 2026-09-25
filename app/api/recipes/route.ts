@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
           image_urls: recipe.imageUrls || [],
           is_today_menu: recipe.isTodayMenu,
           today_menu_set_at: recipe.todayMenuSetAt?.toISOString(),
+          ingredients: [],
+          extraction_status: 'none',
         }))
       );
     }
@@ -36,6 +38,10 @@ export async function GET(request: NextRequest) {
           r.today_menu_set_at,
           r.created_at,
           r.updated_at,
+          r.servings,
+          CASE WHEN r.extraction_status = 'processing' AND r.extracted_at < NOW() - INTERVAL '5 minutes'
+            THEN 'failed' ELSE r.extraction_status END AS extraction_status,
+          r.extraction_source,
           COALESCE(
             json_agg(
               DISTINCT jsonb_build_object('id', c.id, 'name', c.name)
@@ -50,7 +56,18 @@ export async function GET(request: NextRequest) {
               WHERE ri.recipe_id = r.id
             ),
             '[]'
-          ) as image_urls
+          ) as image_urls,
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object('text', ing.text, 'standardName', ing.standard_name, 'isGuess', ing.is_guess)
+                ORDER BY ing.display_order, ing.id
+              )
+              FROM recipe_ingredients ing
+              WHERE ing.recipe_id = r.id
+            ),
+            '[]'
+          ) as ingredients
         FROM recipes r
         LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
         LEFT JOIN categories c ON rc.category_id = c.id
@@ -74,6 +91,10 @@ export async function GET(request: NextRequest) {
           r.today_menu_set_at,
           r.created_at,
           r.updated_at,
+          r.servings,
+          CASE WHEN r.extraction_status = 'processing' AND r.extracted_at < NOW() - INTERVAL '5 minutes'
+            THEN 'failed' ELSE r.extraction_status END AS extraction_status,
+          r.extraction_source,
           COALESCE(
             json_agg(
               DISTINCT jsonb_build_object('id', c.id, 'name', c.name)
@@ -88,7 +109,18 @@ export async function GET(request: NextRequest) {
               WHERE ri.recipe_id = r.id
             ),
             '[]'
-          ) as image_urls
+          ) as image_urls,
+          COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object('text', ing.text, 'standardName', ing.standard_name, 'isGuess', ing.is_guess)
+                ORDER BY ing.display_order, ing.id
+              )
+              FROM recipe_ingredients ing
+              WHERE ing.recipe_id = r.id
+            ),
+            '[]'
+          ) as ingredients
         FROM recipes r
         LEFT JOIN recipe_categories rc ON r.id = rc.recipe_id
         LEFT JOIN categories c ON rc.category_id = c.id

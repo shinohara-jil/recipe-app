@@ -1,10 +1,12 @@
 'use client';
 
-import { Recipe } from '@/app/types/recipe';
+import { Ingredient, Recipe } from '@/app/types/recipe';
 import Image from 'next/image';
 import { getCategoryColor } from '@/app/lib/categoryColors';
 import { useState } from 'react';
 import ImageModal from './ImageModal';
+import IngredientPanel from './IngredientPanel';
+import { copyLines, copyText } from '@/app/lib/ingredients';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -12,12 +14,55 @@ interface RecipeCardProps {
   isExpanded: boolean;
   onEdit: () => void;
   onToggleTodayMenu: () => void;
+  pantryNames: Set<string>;
+  onAddPantry: (name: string) => void;
+  onSaveIngredients: (ingredients: Ingredient[]) => Promise<boolean>;
+  onExtract: () => void;
+  onToast: (message: string) => void;
 }
 
-export default function RecipeCard({ recipe, onClick, isExpanded, onEdit, onToggleTodayMenu }: RecipeCardProps) {
+export default function RecipeCard({
+  recipe,
+  onClick,
+  isExpanded,
+  onEdit,
+  onToggleTodayMenu,
+  pantryNames,
+  onAddPantry,
+  onSaveIngredients,
+  onExtract,
+  onToast,
+}: RecipeCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
+  const [isIngredientsOpen, setIsIngredientsOpen] = useState(false);
+  // コピーするかのチェックを利用者が変えたもの（ページを開き直すと元に戻る）
+  const [checkOverrides, setCheckOverrides] = useState<Record<number, boolean>>({});
+
+  const status = recipe.extractionStatus;
+  const lines = copyLines(recipe.ingredients, pantryNames, checkOverrides);
+  const drawerHint =
+    status === 'processing' ? '読み取り中…'
+    : recipe.ingredients.length ? `買う物 ${lines.length}品`
+    : status === 'failed' ? '読み取れず'
+    : '未読み取り';
+
+  const handleCopy = async () => {
+    const ok = await copyText(lines.join('\n'));
+    onToast(
+      ok
+        ? `${lines.length}品をコピーしました。メモやリマインダーに貼り付けてください${status === 'guess' ? '（推測の材料です）' : ''}`
+        : 'コピーできませんでした。「コピーされる内容を見る」から文字を選んでコピーしてください'
+    );
+    if (!ok) setIsIngredientsOpen(true);
+  };
+
+  const handleSaveIngredients = async (ingredients: Ingredient[]) => {
+    const ok = await onSaveIngredients(ingredients);
+    if (ok) setCheckOverrides({});
+    return ok;
+  };
 
   const hasMultipleImages = recipe.imageUrls && recipe.imageUrls.length > 1;
   const thumbnailUrl = recipe.imageUrls && recipe.imageUrls.length > 0 ? recipe.imageUrls[0] : null;
@@ -70,6 +115,16 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit, onTogg
             {recipe.isTodayMenu && (
               <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-md shadow-sm whitespace-nowrap">
                 今日のメニュー
+              </span>
+            )}
+            {status === 'processing' && (
+              <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-orange-50 text-orange-700 rounded-full whitespace-nowrap">
+                読み取り中…
+              </span>
+            )}
+            {status === 'guess' && (
+              <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded-full whitespace-nowrap">
+                材料は推測
               </span>
             )}
           </div>
@@ -205,6 +260,45 @@ export default function RecipeCard({ recipe, onClick, isExpanded, onEdit, onTogg
                 </button>
               </div>
             </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsIngredientsOpen(!isIngredientsOpen)}
+                aria-expanded={isIngredientsOpen}
+                className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                  isIngredientsOpen ? 'border-orange-500 bg-orange-50' : 'border-gray-300 bg-white hover:border-orange-400'
+                }`}
+              >
+                <span aria-hidden="true">🛒</span>
+                <span className="text-sm font-bold text-gray-800 whitespace-nowrap">材料・買い物リスト</span>
+                <span className="ml-auto truncate text-xs text-gray-500">{drawerHint}</span>
+                <span aria-hidden="true" className={`text-gray-400 transition-transform ${isIngredientsOpen ? 'rotate-180' : ''}`}>
+                  ▾
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleCopy}
+                disabled={status === 'processing' || !lines.length}
+                className="flex-none rounded-lg bg-orange-700 px-3.5 text-sm font-bold text-white hover:bg-orange-800 disabled:bg-gray-300 disabled:text-gray-500"
+              >
+                コピー
+              </button>
+            </div>
+
+            {isIngredientsOpen && (
+              <IngredientPanel
+                recipe={recipe}
+                pantryNames={pantryNames}
+                checkOverrides={checkOverrides}
+                onToggleCheck={(index, checked) => setCheckOverrides({ ...checkOverrides, [index]: checked })}
+                onAddPantry={onAddPantry}
+                onSaveIngredients={handleSaveIngredients}
+                onExtract={onExtract}
+                onCopy={handleCopy}
+              />
+            )}
           </div>
         </div>
       )}
