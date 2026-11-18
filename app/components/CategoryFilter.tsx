@@ -1,7 +1,7 @@
 'use client';
 
 import { Category } from '@/app/types/recipe';
-import { getCategoryColor } from '@/app/lib/categoryColors';
+import { categoryButtonClass } from '@/app/lib/categoryColors';
 
 interface CategoryFilterProps {
   categories: Category[];
@@ -37,12 +37,14 @@ export default function CategoryFilter({
             <button
               key={category.id}
               onClick={() => onToggleCategory(category.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              aria-pressed={isSelected}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${categoryButtonClass(
+                category.id,
+                category.name,
                 isSelected
-                  ? getCategoryColor(category.id)
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              )}`}
             >
+              {isSelected && '✓ '}
               {category.name}
             </button>
           );

@@ -3,7 +3,7 @@
 import { Category, Recipe } from '@/app/types/recipe';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { getCategoryColor } from '@/app/lib/categoryColors';
+import { categoryButtonClass } from '@/app/lib/categoryColors';
 
 interface RecipeModalProps {
   isOpen: boolean;
@@ -152,21 +152,27 @@ export default function RecipeModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-800">
+    // スマホでは画面いっぱい（AI相談と同じ）、PCでは中央の小窓
+    <div className="fixed inset-0 z-50 flex justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="recipe-modal-title">
+      <form
+        onSubmit={handleSubmit}
+        className="flex h-full w-full max-w-2xl flex-col bg-white sm:h-auto sm:max-h-[90dvh] sm:rounded-lg sm:shadow-xl"
+      >
+        <div className="flex flex-none items-center justify-between border-b border-gray-200 px-4 py-3 sm:rounded-t-lg">
+          <h2 id="recipe-modal-title" className="text-xl font-bold text-gray-800">
             {isEditMode ? 'レシピを編集' : 'レシピを登録'}
           </h2>
           <button
+            type="button"
             onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+            aria-label="閉じる"
+            className="-mr-2 px-3 py-1 text-3xl leading-none text-gray-500 hover:text-gray-700"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-6">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               タイトル <span className="text-red-500">*</span>
@@ -176,7 +182,8 @@ export default function RecipeModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              enterKeyHint="next"
+              className="w-full px-4 py-2.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               placeholder="例: 定番のハンバーグ"
             />
           </div>
@@ -187,9 +194,13 @@ export default function RecipeModal({
             </label>
             <input
               type="url"
+              inputMode="url"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               placeholder="https://example.com/recipe"
             />
           </div>
@@ -198,7 +209,7 @@ export default function RecipeModal({
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               レシピ提供者 <span className="text-gray-500 text-xs">(任意)</span>
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => setProvider('長谷川あかり')}
@@ -226,8 +237,8 @@ export default function RecipeModal({
               type="text"
               value={provider !== '長谷川あかり' && provider !== 'もも' ? provider : ''}
               onChange={(e) => setProvider(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent mt-2"
-              placeholder="またはカスタム入力"
+              className="w-full px-4 py-2.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent mt-2"
+              placeholder="または名前を入力"
             />
           </div>
 
@@ -243,12 +254,14 @@ export default function RecipeModal({
                     key={category.id}
                     type="button"
                     onClick={() => toggleCategory(category.id)}
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                    aria-pressed={isSelected}
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${categoryButtonClass(
+                      category.id,
+                      category.name,
                       isSelected
-                        ? getCategoryColor(category.id)
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                    )}`}
                   >
+                    {isSelected && '✓ '}
                     {category.name}
                   </button>
                 );
@@ -265,14 +278,25 @@ export default function RecipeModal({
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               画像 <span className="text-gray-500 text-xs">(任意・複数選択可)</span>
             </label>
-            <input
-              type="file"
-              accept="image/*,.heic,.heif"
-              multiple
-              onChange={handleImageChange}
-              disabled={isConverting}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 disabled:opacity-50"
-            />
+            {/* 標準のファイル選択欄はスマホで横にはみ出すので、ボタンの見た目にする */}
+            <label
+              className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-orange-300 bg-orange-50 px-4 py-3 text-base font-semibold text-orange-700 ${
+                isConverting ? 'opacity-50' : 'cursor-pointer hover:bg-orange-100'
+              }`}
+            >
+              <input
+                type="file"
+                accept="image/*,.heic,.heif"
+                multiple
+                onChange={(e) => {
+                  handleImageChange(e);
+                  e.target.value = ''; // 同じ画像を選び直せるようにする
+                }}
+                disabled={isConverting}
+                className="sr-only"
+              />
+              ＋ 画像を選ぶ
+            </label>
             {isConverting && (
               <p className="mt-2 text-sm text-orange-600">画像を変換中...</p>
             )}
@@ -337,8 +361,10 @@ export default function RecipeModal({
               </div>
             )}
           </div>
+        </div>
 
-          <div className="flex gap-3 pt-4">
+        {/* ボタンは常に画面の下に出しておく（長いフォームでも探さずに押せる） */}
+        <div className="flex flex-none gap-3 border-t border-gray-200 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:rounded-b-lg">
             <button
               type="button"
               onClick={handleClose}
@@ -353,9 +379,8 @@ export default function RecipeModal({
             >
               {isEditMode ? '更新する' : '登録する'}
             </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }

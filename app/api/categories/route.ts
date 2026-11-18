@@ -54,11 +54,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [category] = await sql`
+    const db = sql;
+    const trimmed = name.trim();
+    const insert = () => db`
       INSERT INTO categories (name)
-      VALUES (${name.trim()})
+      VALUES (${trimmed})
       RETURNING id, name, created_at
     `;
+
+    let category;
+    try {
+      [category] = await insert();
+    } catch (error: any) {
+      if (error.code !== '23505') throw error;
+      const existing = await db`SELECT id FROM categories WHERE name = ${trimmed}`;
+      if (existing.length > 0) throw error; // 本当に同じ名前がある
+      // 名前は重複していないのに番号がぶつかった（初期カテゴリを番号指定で入れたため、
+      // 次に振る番号が古いまま）。番号を今ある最大の次に合わせてやり直す
+      await db`SELECT setval(pg_get_serial_sequence('categories', 'id'), (SELECT MAX(id) FROM categories))`;
+      [category] = await insert();
+    }
 
     return NextResponse.json(category, { status: 201 });
   } catch (error: any) {
