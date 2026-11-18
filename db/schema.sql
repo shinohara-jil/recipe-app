@@ -76,6 +76,9 @@ INSERT INTO categories (id, name) VALUES
   (6, 'ホットクック')
 ON CONFLICT (name) DO NOTHING;
 
+-- 番号を指定して入れたので、次に振る番号を 7 以降に合わせる（しないと新しいカテゴリの追加が失敗する）
+SELECT setval(pg_get_serial_sequence('categories', 'id'), (SELECT MAX(id) FROM categories));
+
 -- 家にある物の初期値
 INSERT INTO pantry_items (name) VALUES
   ('しょうゆ'), ('みりん'), ('酒'), ('砂糖'), ('塩'),

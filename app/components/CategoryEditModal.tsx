@@ -125,7 +125,7 @@ export default function CategoryEditModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90dvh] overflow-y-auto overscroll-contain">
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
           <h2 className="text-xl font-bold text-gray-800">
             カテゴリ編集
@@ -157,7 +157,7 @@ export default function CategoryEditModal({
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 onKeyDown={handleAddKeyDown}
                 placeholder="カテゴリ名を入力"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-base"
                 disabled={isAdding}
               />
               <button
@@ -178,17 +178,17 @@ export default function CategoryEditModal({
                 className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
               >
                 <span
-                  className={`w-3 h-3 rounded-full ${getCategoryColor(category.id).split(' ')[0]}`}
+                  className={`w-3 h-3 rounded-full ${getCategoryColor(category.id, category.name).split(' ')[0]}`}
                 />
 
                 {editingId === category.id ? (
-                  <div className="flex-1 flex items-center gap-2">
+                  <div className="min-w-0 flex-1 flex items-center gap-2">
                     <input
                       type="text"
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                      className="min-w-0 flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-base"
                       autoFocus
                       disabled={isSubmitting}
                     />

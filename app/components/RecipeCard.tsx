@@ -133,7 +133,7 @@ export default function RecipeCard({
             {recipe.categories.map((category) => (
               <span
                 key={category.id}
-                className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryColor(category.id)}`}
+                className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryColor(category.id, category.name)}`}
               >
                 {category.name}
               </span>
